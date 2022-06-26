@@ -10,12 +10,12 @@ use deunicode::deunicode_char;
 /// ```rust
 /// use self::slug::slugify;
 ///
-/// assert_eq!(slugify("My Test String!!!1!1"), "my-test-string-1-1");
+/// assert_eq!(slugify("My Test String!!!1!1"), "My-Test-String-1-1");
+/// assert_eq!(slugify("You & Me"), "You-Me");
+/// assert_eq!(slugify("user@example.com"), "user-example-com");
 /// assert_eq!(slugify("test\nit   now!"), "test-it-now");
 /// assert_eq!(slugify("  --test_-_cool"), "test-cool");
-/// assert_eq!(slugify("Æúű--cool?"), "aeuu-cool");
-/// assert_eq!(slugify("You & Me"), "you-me");
-/// assert_eq!(slugify("user@example.com"), "user-example-com");
+/// assert_eq!(slugify("Æúű--cool?"), "AEuu-cool");
 /// ```
 pub fn slugify<S: AsRef<str>>(s: S) -> String {
     _slugify(s.as_ref())
@@ -29,15 +29,15 @@ fn _slugify(s: &str) -> String {
     {
         let mut push_char = |x: u8| {
             match x {
-                b'a'...b'z' | b'0'...b'9' => {
+                b'a'..=b'z' | b'0'..=b'9' => {
                     prev_is_dash = false;
                     slug.push(x);
                 }
-                b'A'...b'Z' => {
+                b'A'..=b'Z' => {
                     prev_is_dash = false;
                     // Manual lowercasing as Rust to_lowercase() is unicode
                     // aware and therefore much slower
-                    slug.push(x - b'A' + b'a');
+                    slug.push(x);
                 }
                 _ => {
                     if !prev_is_dash {
@@ -67,4 +67,31 @@ fn _slugify(s: &str) -> String {
     // We likely reserved more space than needed.
     string.shrink_to_fit();
     string
+}
+
+#[cfg(test)]
+mod tests {
+    use super::slugify;
+
+    #[test]
+    fn test_ascii_symbols() {
+        assert_eq!(slugify("My Test String!!!1!1"), "My-Test-String-1-1");
+        assert_eq!(slugify("You & Me"), "You-Me");
+        assert_eq!(slugify("user@example.com"), "user-example-com");
+    }
+
+    #[test]
+    fn test_escape_char() {
+        assert_eq!(slugify("test\nit   now!"), "test-it-now");
+    }
+
+    #[test]
+    fn test_empty_espaces_and_unecessary_dashes() {
+        assert_eq!(slugify("  --test_-_cool"), "test-cool");
+    }
+
+    #[test]
+    fn test_utf8() {
+        assert_eq!(slugify("Æúű--cool?"), "AEuu-cool");
+    }
 }
